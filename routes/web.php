@@ -1,38 +1,44 @@
 <?php
 
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
-Route::view('/', 'welcome', [
-    'greeting' => 'Hello, World!',
-    'name' => 'John Doe',
-    'age' => 30,
-    'tasks' => [
-        'Learn Laravel',
-        'Build a project',
-        'Deploy to production',
-    ],
-]);
-
+Route::view('/', 'welcome');
 Route::view('/about', 'about');
 Route::view('/contact', 'contact');
 
-Route::get('/formtest', function(){
-    $emails = session()->get('$emails', []);
+Route::get('/formtest', function () {
+    return view('formtest');
+});
 
-    return view('formtest',[
-        'emails' => $emails,
+Route::post('/emails', function (Request $request) {
+    $request->validate([
+        'email' => 'required|email'
     ]);
+
+    $emails = session()->get('emails', []);
+
+    if (in_array($request->email, $emails)) {
+        return back()->with('error', 'Email already exists!');
+    }
+
+    if (count($emails) >= 5) {
+        return back()->with('error', 'Limit reached! Maximum of 5 emails only.');
+    }
+
+    $emails[] = $request->email;
+    session()->put('emails', $emails);
+
+    return back()->with('success', 'Email added successfully!');
 });
 
-Route::post('/formtest', function(){
-    $email = request('email');
+Route::post('/emails/delete/{id}', function ($id) {
+    $emails = session()->get('emails', []);
 
-    session()->push('$emails', $email);
+    if (isset($emails[$id])) {
+        unset($emails[$id]);
+        session()->put('emails', array_values($emails));
+    }
 
-    return redirect('/formtest');
-});
-
-Route::get('/delete-emails', function(){
-    session()->forget('$emails');
-    return redirect('/formtest');
+    return back()->with('success', 'Email deleted!');
 });
